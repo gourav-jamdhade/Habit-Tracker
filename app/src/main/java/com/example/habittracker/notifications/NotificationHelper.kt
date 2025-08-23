@@ -81,4 +81,35 @@ class NotificationHelper @Inject constructor(
     fun testNotification() {
         showHabitReminder(999, "Test Habit")
     }
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun showSmartHabitReminder(habitId: Long, habitTitle: String, contextualMessage: String) {
+        println("DEBUG: Showing smart notification: $contextualMessage")
+
+        val intent = Intent(context, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            habitId.toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_dialog_info)
+            .setContentTitle(habitTitle)
+            .setContentText(contextualMessage)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(habitId.toInt(), notification)
+            println("DEBUG: Smart notification sent successfully")
+        } catch (e: Exception) {
+            println("DEBUG: Smart notification failed: ${e.message}")
+        }
+    }
+
 }
