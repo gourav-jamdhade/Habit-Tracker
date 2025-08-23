@@ -35,12 +35,6 @@ class EditHabitViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val habit = habitRepository.getHabitById(habitId)
-                val scheduledReminders = if (habit?.unitType == UnitType.COUNT && habit.target != null && habit.target > 1) {
-                    habitRepository.getNextScheduledReminders(habitId)
-                } else {
-                    emptyList()
-                }
-
                 if (habit != null) {
                     originalHabit = habit
                     uiState = uiState.copy(
@@ -54,7 +48,6 @@ class EditHabitViewModel @Inject constructor(
                         color = habit.color,
                         isArchived = habit.archived, // ADD THIS
                         isValid = true,
-                        scheduledReminders = scheduledReminders,
                     )
                 } else {
                     uiState = uiState.copy(

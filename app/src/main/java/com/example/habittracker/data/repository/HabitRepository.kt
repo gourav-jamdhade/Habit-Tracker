@@ -13,9 +13,6 @@ import com.example.habittracker.utils.StreakCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,31 +40,14 @@ class HabitRepository @Inject constructor(
     suspend fun insertHabit(habit: Habit): Long {
         val habitId = habitDao.insertHabit(habit)
         val savedHabit = habit.copy(id = habitId)
-
-        println("DEBUG: === INSERTING HABIT ===")
-        println("DEBUG: Habit: ${savedHabit.title}")
-        println("DEBUG: Unit Type: ${savedHabit.unitType}")
-        println("DEBUG: Target: ${savedHabit.target}")
-        println("DEBUG: Reminder Time: ${savedHabit.reminderTime}")
-        // Schedule appropriate reminder type
-        savedHabit.reminderTime?.let { reminderTime ->
-            if (savedHabit.unitType == UnitType.COUNT && savedHabit.target != null && savedHabit.target > 1) {
-                println("DEBUG: Using SMART REMINDERS for count habit")
-                // Use smart reminders for count habits with targets > 1
-                alarmScheduler.scheduleSmartReminders(
-                    habitId = savedHabit.id,
-                    habitTitle = savedHabit.title,
-                    target = savedHabit.target,
-                    baseReminderTime = reminderTime
-                )
-            } else {
-                println("DEBUG: Using SINGLE REMINDER for boolean/simple habit")
-                // Use single reminder for boolean habits or count habits with target = 1
-                alarmScheduler.scheduleReminder(
-                    savedHabit.id, savedHabit.title, reminderTime
-                )
-            }
-        } ?: println("DEBUG: No reminder time set, skipping reminder scheduling")
+        // Schedule reminder if time exists
+        savedHabit.reminderTime?.let {
+            alarmScheduler.scheduleReminder(
+                savedHabit.id,
+                savedHabit.title,
+                it
+            )
+        }
         return habitId
     }
 
@@ -75,18 +55,8 @@ class HabitRepository @Inject constructor(
     suspend fun updateHabit(habit: Habit) {
         habitDao.updateHabit(habit)
         alarmScheduler.cancelReminder(habit.id)
-
-        habit.reminderTime?.let { reminderTime ->
-            if (habit.unitType == UnitType.COUNT && habit.target != null && habit.target > 1) {
-                alarmScheduler.scheduleSmartReminders(
-                    habitId = habit.id,
-                    habitTitle = habit.title,
-                    target = habit.target,
-                    baseReminderTime = reminderTime
-                )
-            } else {
-                alarmScheduler.scheduleReminder(habit.id, habit.title, reminderTime)
-            }
+        habit.reminderTime?.let {
+            alarmScheduler.scheduleReminder(habit.id, habit.title, it)
         }
 
     }
@@ -140,6 +110,7 @@ class HabitRepository @Inject constructor(
         habitDao.setHabitArchived(id, false)
         // (Optionally) reschedule reminders if needed
     }
+
 
 }
 
