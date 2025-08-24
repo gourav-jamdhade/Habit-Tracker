@@ -21,7 +21,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class EditHabitViewModel @Inject constructor(
-    private val habitRepository: HabitRepository, private val alarmScheduler: AlarmScheduler
+    private val habitRepository: HabitRepository,
+    private val alarmScheduler: AlarmScheduler
 ) : ViewModel() {
 
     var uiState by mutableStateOf(EditHabitUiState())
@@ -32,11 +33,17 @@ class EditHabitViewModel @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadHabit(habitId: Long) {
         uiState = uiState.copy(isLoading = true)
+
         viewModelScope.launch {
             try {
                 val habit = habitRepository.getHabitById(habitId)
                 if (habit != null) {
                     originalHabit = habit
+
+                    // ✅ THIS IS WHERE WE USE getNextScheduledReminders
+                    val scheduledReminders = habitRepository.getNextScheduledReminders(habitId)
+                    println("DEBUG: Loaded ${scheduledReminders.size} scheduled reminders")
+
                     uiState = uiState.copy(
                         isLoading = false,
                         title = habit.title,
@@ -46,23 +53,23 @@ class EditHabitViewModel @Inject constructor(
                         selectedDays = ScheduleUtils.getScheduledDays(habit.schedule),
                         reminderTime = habit.reminderTime,
                         color = habit.color,
-                        isArchived = habit.archived, // ADD THIS
-                        isValid = true,
+                        isArchived = habit.archived,
+                        scheduledReminders = scheduledReminders, // ✅ Using it here
+                        isValid = true
                     )
                 } else {
                     uiState = uiState.copy(
-                        error = "Habit not found",
+                        isLoading = false,
+                        error = "Habit not found"
                     )
-                    println("DEBUG: Habit not found")
                 }
             } catch (e: Exception) {
                 uiState = uiState.copy(
-                    error = "Failed to load habit: ${e.message}",
+                    isLoading = false,
+                    error = "Failed to load habit: ${e.message}"
                 )
-                println("DEBUG: Failed to load habit: ${e.message}")
             }
         }
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -258,15 +265,15 @@ data class EditHabitUiState(
     val schedule: Int = ScheduleUtils.DAILY_SCHEDULE,
     val reminderTime: LocalTime? = null,
     val color: Int = 0,
+    val isArchived: Boolean = false,
+    val scheduledReminders: List<String> = emptyList(), // ✅ Add this field
     val isValid: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val isDeleting: Boolean = false,
     val isDeleted: Boolean = false,
     val showDeleteDialog: Boolean = false,
-    val error: String? = null,
-    val isArchived: Boolean = false,
-    val scheduledReminders: List<String> = emptyList(),
+    val error: String? = null
 )
 
 // Events

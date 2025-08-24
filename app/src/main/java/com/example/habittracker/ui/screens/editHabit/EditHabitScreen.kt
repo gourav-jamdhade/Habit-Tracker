@@ -3,6 +3,7 @@ package com.example.habittracker.ui.screens.editHabit
 // app/src/main/java/com/yourapp/habittracker/ui/screens/edithabit/EditHabitScreen.kt
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
@@ -39,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,7 +49,6 @@ import com.example.habittracker.data.entities.UnitType
 import com.example.habittracker.ui.screens.addHabit.ColorSection
 import com.example.habittracker.ui.screens.addHabit.ModeSection
 import com.example.habittracker.ui.screens.addHabit.ReminderSection
-import com.example.habittracker.ui.screens.addHabit.ScheduleSection
 import com.example.habittracker.ui.screens.addHabit.TargetSection
 import com.example.habittracker.ui.screens.addHabit.TitleSection
 import com.example.habittracker.ui.screens.addHabit.UnitTypeSection
@@ -176,12 +178,6 @@ fun EditHabitScreen(
                     }
                 }
 
-                item {
-                    ScheduleSection(
-                        selectedDays = uiState.selectedDays,
-                        onScheduleChange = { viewModel.onEvent(EditHabitEvent.ScheduleChanged(it)) }
-                    )
-                }
 
                 item {
                     ReminderSection(
@@ -268,26 +264,39 @@ private fun ScheduledRemindersSection(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = "Scheduled Reminders",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Schedule,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Scheduled Reminders",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             scheduledReminders.forEach { reminder ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                CircleShape
+                            )
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = reminder,
                         style = MaterialTheme.typography.bodyMedium,
@@ -296,11 +305,16 @@ private fun ScheduledRemindersSection(
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = "💡 Smart reminders help you reach your daily target",
+                text = if (scheduledReminders.size > 1)
+                    "💡 Multiple smart reminders help you reach your daily target"
+                else
+                    "💡 Single reminder for this habit",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+                fontStyle = FontStyle.Italic
             )
         }
     }

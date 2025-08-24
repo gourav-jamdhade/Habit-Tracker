@@ -13,8 +13,12 @@ import com.example.habittracker.utils.StreakCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.collections.map
 
 @Singleton
 class HabitRepository @Inject constructor(
@@ -40,25 +44,67 @@ class HabitRepository @Inject constructor(
     suspend fun insertHabit(habit: Habit): Long {
         val habitId = habitDao.insertHabit(habit)
         val savedHabit = habit.copy(id = habitId)
-        // Schedule reminder if time exists
-        savedHabit.reminderTime?.let {
-            alarmScheduler.scheduleReminder(
-                savedHabit.id,
-                savedHabit.title,
-                it
-            )
-        }
+
+        println("DEBUG: === INSERTING HABIT ===")
+        println("DEBUG: Habit: ${savedHabit.title}")
+        println("DEBUG: Unit Type: ${savedHabit.unitType}")
+        println("DEBUG: Target: ${savedHabit.target}")
+        println("DEBUG: Reminder Time: ${savedHabit.reminderTime}")
+
+        // Schedule appropriate reminder type based on habit characteristics
+        savedHabit.reminderTime?.let { reminderTime ->
+            if (savedHabit.unitType == UnitType.COUNT && savedHabit.target != null && savedHabit.target > 1) {
+                println("DEBUG: Using SMART REMINDERS for count habit")
+                // Use smart reminders for count habits with targets > 1
+                alarmScheduler.scheduleSmartReminders(
+                    habitId = savedHabit.id,
+                    habitTitle = savedHabit.title,
+                    target = savedHabit.target,
+                    baseReminderTime = reminderTime
+                )
+            } else {
+                println("DEBUG: Using SINGLE REMINDER for boolean/simple habit")
+                // Use single reminder for boolean habits or count habits with target = 1
+                alarmScheduler.scheduleReminder(
+                    savedHabit.id,
+                    savedHabit.title,
+                    reminderTime
+                )
+            }
+        } ?: println("DEBUG: No reminder time set, skipping reminder scheduling")
+
         return habitId
     }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun updateHabit(habit: Habit) {
         habitDao.updateHabit(habit)
-        alarmScheduler.cancelReminder(habit.id)
-        habit.reminderTime?.let {
-            alarmScheduler.scheduleReminder(habit.id, habit.title, it)
-        }
 
+        println("DEBUG: === UPDATING HABIT ===")
+        println("DEBUG: Habit: ${habit.title}")
+        println("DEBUG: Unit Type: ${habit.unitType}")
+        println("DEBUG: Target: ${habit.target}")
+        println("DEBUG: Reminder Time: ${habit.reminderTime}")
+
+        // Cancel existing reminders first
+        alarmScheduler.cancelReminder(habit.id)
+
+        // Schedule new reminders based on updated habit
+        habit.reminderTime?.let { reminderTime ->
+            if (habit.unitType == UnitType.COUNT && habit.target != null && habit.target > 1) {
+                println("DEBUG: Using SMART REMINDERS for updated count habit")
+                alarmScheduler.scheduleSmartReminders(
+                    habitId = habit.id,
+                    habitTitle = habit.title,
+                    target = habit.target,
+                    baseReminderTime = reminderTime
+                )
+            } else {
+                println("DEBUG: Using SINGLE REMINDER for updated boolean/simple habit")
+                alarmScheduler.scheduleReminder(habit.id, habit.title, reminderTime)
+            }
+        } ?: println("DEBUG: No reminder time set for updated habit")
     }
 
     suspend fun archiveHabit(id: Long) {
@@ -111,6 +157,118 @@ class HabitRepository @Inject constructor(
         // (Optionally) reschedule reminders if needed
     }
 
+     suspend fun getNextScheduledReminders(habitId: Long): List<String> {
+        val habit = getHabitById(habitId) ?: return emptyList()
+
+        if (habit.reminderTime == null) return emptyList()
+
+        if (habit.unitType != UnitType.COUNT || habit.target == null || habit.target <= 1) {
+            // Single reminder for boolean habits
+            val nextReminder = getNextOccurrence(habit.reminderTime)
+            return listOf("Next: ${formatDateTime(nextReminder)}")
+        }
+
+        // Smart reminders for count habits
+        val reminderTimes = calculateSmartReminderTimes(habit.target, habit.reminderTime)
+        val now = LocalDateTime.now()
+
+        return reminderTimes
+            .map { getNextOccurrence(it) }
+            .filter { it.isAfter(now) }
+            .take(4)
+            .mapIndexed { index, dateTime ->
+                when (index) {
+                    0 -> "Next: ${formatDateTime(dateTime)}"
+                    else -> "Then: ${formatDateTime(dateTime)}"
+                }
+            }
+    }
+
+    private fun getNextOccurrence(time: LocalTime): LocalDateTime {
+        val now = LocalDateTime.now()
+        var scheduledTime = LocalDateTime.of(now.toLocalDate(), time)
+
+        if (scheduledTime.isBefore(now) || scheduledTime.isEqual(now)) {
+            scheduledTime = scheduledTime.plusDays(1)
+        }
+
+        return scheduledTime
+    }
+
+
+    private fun formatDateTime(dateTime: LocalDateTime): String {
+        val now = LocalDateTime.now()
+        val timeStr = dateTime.format(DateTimeFormatter.ofPattern("h:mm a"))
+
+        return when {
+            dateTime.toLocalDate() == now.toLocalDate() -> "Today $timeStr"
+            dateTime.toLocalDate() == now.toLocalDate().plusDays(1) -> "Tomorrow $timeStr"
+            else -> dateTime.format(DateTimeFormatter.ofPattern("MMM d 'at' h:mm a"))
+        }
+    }
+
+    private fun calculateSmartReminderTimes(target: Int, baseReminderTime: LocalTime?): List<LocalTime> {
+        // Copy the same logic from AlarmScheduler for consistency
+        val reminderTimes = mutableListOf<LocalTime>()
+
+        // Development mode: Short intervals
+        val isDevelopmentMode = false // Match AlarmScheduler setting
+
+        if (isDevelopmentMode) {
+            val now = LocalTime.now()
+            val reminderCount = when {
+                target <= 2 -> 2
+                target <= 4 -> 3
+                target <= 6 -> 4
+                else -> 5
+            }
+
+            repeat(reminderCount) { index ->
+                val testTime = now.plusMinutes((index + 1) * 2L)
+                reminderTimes.add(testTime)
+            }
+
+            return reminderTimes
+        }
+
+        // Production mode logic (same as AlarmScheduler)
+        when {
+            target <= 2 -> {
+                reminderTimes.add(LocalTime.of(9, 0))
+                reminderTimes.add(LocalTime.of(19, 0))
+            }
+            target <= 4 -> {
+                reminderTimes.add(LocalTime.of(9, 0))
+                reminderTimes.add(LocalTime.of(14, 0))
+                reminderTimes.add(LocalTime.of(20, 0))
+            }
+            target <= 6 -> {
+                reminderTimes.add(LocalTime.of(9, 0))
+                reminderTimes.add(LocalTime.of(12, 30))
+                reminderTimes.add(LocalTime.of(16, 0))
+                reminderTimes.add(LocalTime.of(20, 0))
+            }
+            else -> {
+                reminderTimes.add(LocalTime.of(8, 0))
+                reminderTimes.add(LocalTime.of(11, 30))
+                reminderTimes.add(LocalTime.of(15, 0))
+                reminderTimes.add(LocalTime.of(18, 0))
+                reminderTimes.add(LocalTime.of(21, 0))
+            }
+        }
+
+        // Replace closest with user's preferred time
+        baseReminderTime?.let { userTime ->
+            val userHour = userTime.hour
+            val closestIndex = reminderTimes.mapIndexed { index, time ->
+                index to kotlin.math.abs(time.hour - userHour)
+            }.minByOrNull { it.second }?.first ?: 0
+
+            reminderTimes[closestIndex] = userTime
+        }
+
+        return reminderTimes.sorted()
+    }
 
 }
 

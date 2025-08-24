@@ -15,10 +15,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,12 +24,15 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.example.habittracker.notifications.AlarmScheduler
 import com.example.habittracker.notifications.NotificationHelper
 import com.example.habittracker.ui.navigation.HabitNavigation
 import com.example.habittracker.ui.theme.HabitTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import java.time.LocalTime
 import javax.inject.Inject
 
 // Add to MainActivity.kt
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var alarmScheduler: AlarmScheduler
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,11 +89,27 @@ class MainActivity : ComponentActivity() {
 //                            Button(onClick = { notificationHelper.testNotification() }) {
 //                                Text("Test Notification")
 //                            }
-//                            Spacer(modifier = Modifier.width(8.dp))
 //                            Button(onClick = {
 //                                alarmScheduler.testReminder(1L, "Test Habit")
 //                            }) {
 //                                Text("Test 10s Timer")
+//                            }
+//
+//                            // Add this button alongside your existing test buttons
+//                            Button(
+//                                onClick = {
+//                                    println("DEBUG: Testing smart reminders...")
+//                                    lifecycleScope.launch {
+//                                        alarmScheduler.scheduleSmartReminders(
+//                                            habitId = 999L,
+//                                            habitTitle = "Test Smart Habit",
+//                                            target = 6,
+//                                            baseReminderTime = LocalTime.now().plusMinutes(1)
+//                                        )
+//                                    }
+//                                }
+//                            ) {
+//                                Text("Test Smart Reminders")
 //                            }
 //                        }
 

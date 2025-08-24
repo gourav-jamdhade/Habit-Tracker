@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.habittracker.ui.screens.addHabit.AddHabitScreen
+import com.example.habittracker.ui.screens.analytics.AnalyticsScreen
 import com.example.habittracker.ui.screens.archived.ArchivedHabitsScreen
 import com.example.habittracker.ui.screens.editHabit.EditHabitScreen
 import com.example.habittracker.ui.screens.today.TodayScreen
@@ -26,7 +27,8 @@ fun HabitNavigation(navController: NavHostController) {
                 onNavigateToEditHabit = { habitId ->
                     navController.navigate("edit_habit/$habitId")
                 },
-                onNavigateToArchived = { navController.navigate("archived_habits") }
+                onNavigateToArchived = { navController.navigate("archived_habits") },
+                onNavigateToAnalytics = { navController.navigate("analytics") }
 
             )
         }
@@ -57,6 +59,12 @@ fun HabitNavigation(navController: NavHostController) {
                 onNavigateBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable("analytics") {
+            AnalyticsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

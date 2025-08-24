@@ -41,4 +41,16 @@ interface EntryDao {
 
     @Delete
     suspend fun deleteEntry(entry: Entry)
+
+    // In EntryDao.kt, add these methods:
+    @Query("SELECT * FROM entries")
+    fun getAllEntries(): Flow<List<Entry>>
+
+
+    @Query("SELECT * FROM entries WHERE localDate BETWEEN :startDate AND :endDate")
+     fun getEntriesInRange(startDate: LocalDate, endDate: LocalDate): Flow<List<Entry>>
+
+    @Query("SELECT * FROM entries WHERE habitId = :habitId")
+    suspend fun getEntriesForHabitList(habitId: Long): List<Entry>
+
 }
